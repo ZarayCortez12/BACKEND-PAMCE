@@ -1,3 +1,13 @@
+
+// Escapa datos escritos por usuarios antes de insertarlos en el HTML del correo
+const escaparHtml = (texto) =>
+  String(texto ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+
 const nodemailer = require("nodemailer");
 const path = require("path");
 const { send } = require("process");
@@ -63,7 +73,7 @@ const sendEmailReset = async (recipient_email, OTP, name) => {
       
     </div>
 
-    <p><strong>Hola ${name},</strong></p>
+    <p><strong>Hola ${escaparHtml(name)},</strong></p>
     <p>
       Hemos recibido tu solicitud de reestablecimiento de contraseña. 
       Por favor verifica tu identidad con este código de un solo uso (OTP):
@@ -200,9 +210,9 @@ const sendEmailConvocatoria = async (
     </div>
 
     <div class="content">
-      <h2>${nombre_edicion}</h2>
+      <h2>${escaparHtml(nombre_edicion)}</h2>
       <p>
-        ¡Nos complace invitarte a participar en la <strong>${nombre_edicion}</strong> 
+        ¡Nos complace invitarte a participar en la <strong>${escaparHtml(nombre_edicion)}</strong> 
         del <strong>Premio Anual al Mérito Científico y Empresarial (PAMCE)</strong>!
       </p>
       <p>
@@ -345,7 +355,7 @@ const sendEmailCrearContrasena = async (
     </div>
 
     <div class="content">
-      <h2>Hola, ${primer_nombre}</h2>
+      <h2>Hola, ${escaparHtml(primer_nombre)}</h2>
       <p>
         Este correo es para confirmar que has sido registrado a PAMCE. 
         Ahora debes crear una contraseña para tu cuenta.
@@ -486,15 +496,15 @@ const sendEmailConfirmacionPostulacion = async (
     </div>
 
     <div class="content">
-      <p><strong>Hola ${nombreUsuario},</strong></p>
+      <p><strong>Hola ${escaparHtml(nombreUsuario)},</strong></p>
 
       <p>
         Hemos recibido correctamente tu postulación a la edición:
       </p>
 
       <p style="font-size:16px;">
-        <strong>${nombreEdicion}</strong><br/>
-        Categoría: <strong>${nombreCategoria}</strong>
+        <strong>${escaparHtml(nombreEdicion)}</strong><br/>
+        Categoría: <strong>${escaparHtml(nombreCategoria)}</strong>
       </p>
 
       <p>
@@ -643,11 +653,11 @@ const sendEmailAceptarPostulacion = async (
     </div>
 
     <div class="content">
-      <h2>¡Felicidades, ${nombre_participante}!</h2>
+      <h2>¡Felicidades, ${escaparHtml(nombre_participante)}!</h2>
       <h3>Tu postulación ha sido aceptada</h3>
       
       <p>
-        Nos complace informarte que, tras revisar detalladamente tu documentación, tu postulación a la categoría <strong>${nombre_categoria}</strong> en la <strong>${nombre_edicion}</strong> ha sido aprobada exitosamente.
+        Nos complace informarte que, tras revisar detalladamente tu documentación, tu postulación a la categoría <strong>${escaparHtml(nombre_categoria)}</strong> en la <strong>${escaparHtml(nombre_edicion)}</strong> ha sido aprobada exitosamente.
       </p>
 
       <p style="margin-top:30px; font-size:13px; color: #888;">
@@ -784,15 +794,15 @@ const sendEmailRechazarPostulacion = async (
     </div>
 
     <div class="content">
-      <h2>Estimado(a) ${nombre_participante},</h2>
+      <h2>Estimado(a) ${escaparHtml(nombre_participante)},</h2>
       
       <p>
-        Agradecemos sinceramente su interés en participar en la <strong>${nombre_edicion}</strong> 
+        Agradecemos sinceramente su interés en participar en la <strong>${escaparHtml(nombre_edicion)}</strong> 
         del Premio Anual al Mérito Científico y Empresarial (PAMCE).
       </p>
 
       <p>
-        Tras realizar la fase de revisión técnica de su postulación en la categoría <strong>${nombre_categoria}</strong>, 
+        Tras realizar la fase de revisión técnica de su postulación en la categoría <strong>${escaparHtml(nombre_categoria)}</strong>, 
         lamentamos informarle que en esta ocasión no ha sido posible aceptar su participación.
       </p>
 
