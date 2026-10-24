@@ -668,14 +668,14 @@ const registrarParticipacionPublico = async (req, res) => {
     const participante = await UsuarioRol.findOne({
       where: {
         id_usuario: id_usuario,
-        id_rol: 3,
+        id_rol: 4,
       },
     });
 
     if (!participante) {
       await UsuarioRol.create({
         id_usuario: id_usuario,
-        id_rol: 3,
+        id_rol: 4,
       });
     }
     const edicion = await Edicion.findByPk(id_edicion);
