@@ -48,10 +48,16 @@ function normalizarObjeto(valor) {
   return valor;
 }
 
+// Ambos snapshots se pasan por JSON antes de comparar: el actual trae objetos
+// Date y el guardado trae esas fechas como texto. Sin esto, normalizarObjeto
+// convertía cada Date en {} y la comparación nunca coincidía, así que
+// ninguna edición se archivaba.
+const comoJson = (valor) => JSON.parse(JSON.stringify(valor));
+
 function compararSnapshots(snapshotActual, snapshotHistorico) {
   return (
-    JSON.stringify(normalizarObjeto(snapshotActual)) ===
-    JSON.stringify(normalizarObjeto(snapshotHistorico))
+    JSON.stringify(normalizarObjeto(comoJson(snapshotActual))) ===
+    JSON.stringify(normalizarObjeto(comoJson(snapshotHistorico)))
   );
 }
 
@@ -367,7 +373,7 @@ async function reintentarLimpiezasPendientes() {
     `
       SELECT h.id_edicion
       FROM historico_ediciones h
-      WHERE h.archivos_no_eliminados <> '[]'::JSON
+      WHERE h.archivos_no_eliminados::JSONB <> '[]'::JSONB
       ORDER BY h.fecha_archivado ASC;
     `,
     { type: QueryTypes.SELECT },
