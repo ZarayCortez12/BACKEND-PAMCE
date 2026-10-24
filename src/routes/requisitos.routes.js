@@ -1,6 +1,7 @@
 const express = require("express");
 const { verificarToken } = require("../utils/verificarToken");
 const { verificarRol } = require("../utils/verificarRol");
+const { bloquearConfiguracionConvocatoria } = require("../middlewares/bloquearConfiguracionConvocatoria");
 const {
   listarRequisitosPorCategoriaEdicion,
   obtenerConfiguracionRequisitoDeCategoriaEdicion,
@@ -46,24 +47,28 @@ router.post(
   "/requisitos/edicion/categoria/:id_edicion_categoria",
   verificarToken,
   verificarRol("director"),
+  bloquearConfiguracionConvocatoria,
   agregarRequisitoCategoriaEdicion,
 );
 router.put(
   "/requisitos/edicion/categoria/:id_requisito_edicion_categoria",
   verificarToken,
   verificarRol("director"),
+  bloquearConfiguracionConvocatoria,
   editarRequisitoCategoriaEdicion,
 );
 router.put(
   "/requisitos/edicion/categoria/configuracion/:id_requisito_edicion_categoria",
   verificarToken,
   verificarRol("director"),
+  bloquearConfiguracionConvocatoria,
   editarConfiguracionRequisitoCategoriaEdicion,
 );
 router.delete(
   "/requisitos/edicion/categoria/:id_requisito_edicion_categoria",
   verificarToken,
   verificarRol("director"),
+  bloquearConfiguracionConvocatoria,
   eliminarRequisitoCategoriaEdicion,
 );
 router.get(
@@ -76,24 +81,28 @@ router.post(
   "/requisitos/edicion/:id_edicion",
   verificarToken,
   verificarRol("director"),
+  bloquearConfiguracionConvocatoria,
   agregarRequisitoEdicion,
 );
 router.put(
   "/requisitos/edicion/:id_requisito_edicion",
   verificarToken,
   verificarRol("director"),
+  bloquearConfiguracionConvocatoria,
   editarRequisitoEdicion,
 );
 router.put(
   "/requisitos/edicion/configuracion/:id_requisito_edicion",
   verificarToken,
   verificarRol("director"),
+  bloquearConfiguracionConvocatoria,
   editarConfiguracionRequisitoEdicion,
 );
 router.delete(
   "/requisitos/edicion/:id_requisito_edicion",
   verificarToken,
   verificarRol("director"),
+  bloquearConfiguracionConvocatoria,
   eliminarRequisitoEdicion,
 );
 
@@ -103,11 +112,12 @@ router.get(
   verificarRol("director"),
   filtrarRequisitosEdicion,
 );
-router.put("/requisitos/:idEdicionRequisito", verificarToken, verificarRol("director"), editarRequisito);
+router.put("/requisitos/:idEdicionRequisito", verificarToken, verificarRol("director"), bloquearConfiguracionConvocatoria, editarRequisito);
 router.delete(
   "/requisitos/:idEdicionRequisito",
   verificarToken,
   verificarRol("director"),
+  bloquearConfiguracionConvocatoria,
   eliminarRequisito,
 );
 

@@ -12,6 +12,7 @@ const {
 
 const { verificarToken } = require("../utils/verificarToken");
 const { verificarRol } = require("../utils/verificarRol");
+const { bloquearConfiguracionConvocatoria } = require("../middlewares/bloquearConfiguracionConvocatoria");
 
 const router = express.Router();
 
@@ -34,18 +35,21 @@ router.post(
   "/rubricas/edicion/:id_edicion_categoria",
   verificarToken,
   verificarRol("director"),
+  bloquearConfiguracionConvocatoria,
   agregarRubricaAEdicionCategoria,
 );
 router.put(
   "/rubricas/porcentaje/:id_ecr",
   verificarToken,
   verificarRol("director"),
+  bloquearConfiguracionConvocatoria,
   editarPorcentajeRubrica,
 );
 router.delete(
   "/rubricas/edicion/:id_ecr",
   verificarToken,
   verificarRol("director"),
+  bloquearConfiguracionConvocatoria,
   eliminarRubricaDeEdicionCategoria,
 );
 

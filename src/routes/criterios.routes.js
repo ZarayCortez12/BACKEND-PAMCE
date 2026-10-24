@@ -8,6 +8,7 @@ const {
 
 const { verificarToken } = require("../utils/verificarToken");
 const { verificarRol } = require("../utils/verificarRol");
+const { bloquearConfiguracionConvocatoria } = require("../middlewares/bloquearConfiguracionConvocatoria");
 
 const router = express.Router();
 
@@ -22,12 +23,14 @@ router.post(
   "/criterios/:id_edicion_categoria",
   verificarToken,
   verificarRol("director"),
+  bloquearConfiguracionConvocatoria,
   agregarPorcentajesCriterio,
 );
 router.put(
   "/criterios/porcentaje/:id_ecrc",
   verificarToken,
   verificarRol("director"),
+  bloquearConfiguracionConvocatoria,
   editarPorcentajeCriterio,
 );
 

@@ -15,6 +15,7 @@ const {
 } = require("../controller/evaluacion.controller");
 const { verificarToken } = require("../utils/verificarToken");
 const { verificarRol } = require("../utils/verificarRol");
+const { bloquearConfiguracionConvocatoria } = require("../middlewares/bloquearConfiguracionConvocatoria");
 
 const router = express.Router();
 
@@ -31,6 +32,7 @@ router.put(
   "/rubricas/editar-porcentaje/:id_ecrc",
   verificarToken,
   verificarRol("director"),
+  bloquearConfiguracionConvocatoria,
   editarPorcentajeCriterio,
 );
 router.get(
@@ -43,24 +45,28 @@ router.post(
   "/rubricas/agregar/:id_edicion_categoria",
   verificarToken,
   verificarRol("director"),
+  bloquearConfiguracionConvocatoria,
   agregarRubricaAEdicionCategoria,
 );
 router.post(
   "/rubricas/agregar-porcentajes/:id_edicion_categoria",
   verificarToken,
   verificarRol("director"),
+  bloquearConfiguracionConvocatoria,
   agregarPorcentajesCriterio,
 );
 router.put(
   "/rubricas/editar-porcentaje-rubrica/:id_ecr",
   verificarToken,
   verificarRol("director"),
+  bloquearConfiguracionConvocatoria,
   editarPorcentajeRubrica,
 );
 router.delete(
   "/rubricas/eliminar/:id_ecr",
   verificarToken,
   verificarRol("director"),
+  bloquearConfiguracionConvocatoria,
   eliminarRubricaDeEdicionCategoria,
 );
 router.get(
