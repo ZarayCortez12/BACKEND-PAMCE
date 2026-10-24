@@ -10,6 +10,63 @@ const {
 } = require("../models");
 const sequelize = require("../configs/db");
 const { setAuditContext } = require("../utils/audits");
+const { hoyBogota } = require("../utils/fechas");
+
+// Orden de las fechas de una edición. Entre etapas se exige que una termine
+// antes de que empiece la siguiente; si no, los crons se pisan entre sí
+// (por ejemplo, una premiación después de fecha_fin nunca se procesa).
+const ORDEN_FECHAS = [
+  ["fecha_inicio", "fecha_inicio_convocatoria", "<="],
+  ["fecha_inicio_convocatoria", "fecha_fin_convocatoria", "<="],
+  ["fecha_fin_convocatoria", "fecha_inicio_evaluacion", "<"],
+  ["fecha_inicio_evaluacion", "fecha_fin_evaluacion", "<="],
+  ["fecha_fin_evaluacion", "fecha_inicio_premiacion", "<"],
+  ["fecha_inicio_premiacion", "fecha_fin_premiacion", "<="],
+  ["fecha_fin_premiacion", "fecha_fin", "<="],
+];
+
+const NOMBRES_FECHAS = {
+  fecha_inicio: "inicio de la edición",
+  fecha_inicio_convocatoria: "inicio de la convocatoria",
+  fecha_fin_convocatoria: "fin de la convocatoria",
+  fecha_inicio_evaluacion: "inicio de la evaluación",
+  fecha_fin_evaluacion: "fin de la evaluación",
+  fecha_inicio_premiacion: "inicio de la premiación",
+  fecha_fin_premiacion: "fin de la premiación",
+  fecha_fin: "fin de la edición",
+};
+
+// Devuelve un mensaje de error si las fechas no son válidas, o null
+const validarFechasEdicion = (fechas) => {
+  for (const campo of Object.keys(NOMBRES_FECHAS)) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(String(fechas[campo] ?? ""))) {
+      return `Falta o no es válida la fecha de ${NOMBRES_FECHAS[campo]}.`;
+    }
+  }
+
+  for (const [anterior, siguiente, operador] of ORDEN_FECHAS) {
+    const a = String(fechas[anterior]);
+    const b = String(fechas[siguiente]);
+    const valido = operador === "<" ? a < b : a <= b;
+
+    if (!valido) {
+      return `La fecha de ${NOMBRES_FECHAS[siguiente]} debe ser ${
+        operador === "<" ? "posterior a" : "igual o posterior a"
+      } la fecha de ${NOMBRES_FECHAS[anterior]}.`;
+    }
+  }
+
+  return null;
+};
+
+// Cambios de estado que permite la interfaz del director
+const TRANSICIONES_PERMITIDAS = {
+  activo: ["inactivo"],
+  inactivo: ["activo"],
+  en_proceso: ["cancelada"],
+  cancelada: ["inactivo"],
+  finalizada: ["inactivo"],
+};
 
 const listarEdiciones = async (req, res) => {
   try {
@@ -45,7 +102,7 @@ const listarEdiciones = async (req, res) => {
       if (anio && anio !== "TODOS") {
         const monthStr = mes.toString().padStart(2, "0");
         const startMonth = `${anio}-${monthStr}-01`;
-        const endMonth = `${anio}-${monthStr}-31`;
+        const endMonth = `${anio}-${monthStr}-${new Date(Number(anio), Number(monthStr), 0).getDate()}`;
 
         conditions.push({
           [Op.or]: [
@@ -129,12 +186,20 @@ const agregarEdicion = async (req, res) => {
       fecha_registro: new Date(),
     };
 
+    const errorFechas = validarFechasEdicion(nuevaEdicion);
+
+    if (errorFechas) {
+      await transaction.rollback();
+      return res.status(400).json({ message: errorFechas });
+    }
+
     const hayEdicion = await Edicion.findOne({
       where: { nombre_edicion: nuevaEdicion.nombre_edicion },
       transaction,
     });
 
     if (hayEdicion) {
+      await transaction.rollback();
       return res
         .status(400)
         .json({ message: "Ya existe una edición con ese nombre" });
@@ -251,6 +316,25 @@ const editarEdicion = async (req, res) => {
       return res.status(404).json({ message: "Edición no encontrada" });
     }
 
+    const cambianFechas = Object.keys(NOMBRES_FECHAS).some(
+      (campo) => String(edicion[campo]) !== String(edicionModificada[campo]),
+    );
+
+    if (edicion.fecha_procesamiento_premiacion && cambianFechas) {
+      await transaction.rollback();
+      return res.status(400).json({
+        message:
+          "No se pueden cambiar las fechas: la premiación de esta edición ya fue procesada.",
+      });
+    }
+
+    const errorFechas = validarFechasEdicion(edicionModificada);
+
+    if (errorFechas) {
+      await transaction.rollback();
+      return res.status(400).json({ message: errorFechas });
+    }
+
     const edicionConflictiva = await Edicion.findOne({
       where: {
         id_edicion: { [Op.ne]: edicion.id_edicion },
@@ -349,9 +433,21 @@ const cambiarEstado = async (req, res) => {
       return res.status(404).json({ message: "Edición no encontrada" });
     }
 
-    const toDateOnly = (date) => {
-      return new Date(date.getFullYear(), date.getMonth(), date.getDate());
-    };
+    const permitidos = TRANSICIONES_PERMITIDAS[edicion.estado_edicion] || [];
+
+    if (!permitidos.includes(estado)) {
+      await transaction.rollback();
+      return res.status(400).json({
+        message: `No se puede pasar una edición de "${edicion.estado_edicion}" a "${estado}".`,
+      });
+    }
+
+    if (estado === "cancelada" && !String(observacion ?? "").trim()) {
+      await transaction.rollback();
+      return res.status(400).json({
+        message: "Debe ingresar el motivo de la cancelación.",
+      });
+    }
 
     if (estado === "activo") {
       const edicionConflictiva = await Edicion.findOne({
@@ -396,9 +492,11 @@ const cambiarEstado = async (req, res) => {
         });
       }
 
-      const hoy = toDateOnly(new Date());
-      const inicio = toDateOnly(new Date(edicion.fecha_inicio));
-      const fin = toDateOnly(new Date(edicion.fecha_final));
+      // Si hoy ya cae dentro de las fechas, la edición pasa directo a en_proceso
+      // (antes se usaba edicion.fecha_final, que no existe, y nunca pasaba)
+      const hoy = hoyBogota();
+      const inicio = String(edicion.fecha_inicio);
+      const fin = String(edicion.fecha_fin);
 
       if (hoy >= inicio && hoy <= fin) {
         const otraEnProceso = await Edicion.findOne({
@@ -474,6 +572,9 @@ const eliminarEdicion = async (req, res) => {
 
     res.status(200).json({ message: "Edición eliminada correctamente" });
   } catch (error) {
+    if (!transaction.finished) {
+      await transaction.rollback();
+    }
     console.error(error);
     res.status(500).json({ error: "Error en el servidor" });
   }
@@ -846,7 +947,7 @@ const obtenerEdicionesPorJurado = async (req, res) => {
       if (anio && anio !== "TODOS") {
         const monthStr = mes.toString().padStart(2, "0");
         const startMonth = `${anio}-${monthStr}-01`;
-        const endMonth = `${anio}-${monthStr}-31`;
+        const endMonth = `${anio}-${monthStr}-${new Date(Number(anio), Number(monthStr), 0).getDate()}`;
 
         conditions.push({
           [Op.or]: [

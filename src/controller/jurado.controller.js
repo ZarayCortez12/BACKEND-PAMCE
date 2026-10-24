@@ -897,7 +897,7 @@ const obtenerEdicionesParticipacionJurado = async (req, res) => {
       if (anio && anio !== "TODOS") {
         const monthStr = mes.toString().padStart(2, "0");
         const startMonth = `${anio}-${monthStr}-01`;
-        const endMonth = `${anio}-${monthStr}-31`;
+        const endMonth = `${anio}-${monthStr}-${new Date(Number(anio), Number(monthStr), 0).getDate()}`;
 
         conditions.push({
           [Op.or]: [
