@@ -16,6 +16,7 @@ const {
 const { Op, fn, col, where } = require("sequelize");
 const { id, ca } = require("zod/locales");
 const { setAuditContext } = require("../utils/audits");
+const { hoyBogota } = require("../utils/fechas");
 const sequelize = require("../configs/db");
 const NotificacionService = require("../middlewares/notificaciones.js");
 
@@ -1148,6 +1149,78 @@ const obtenerParticipacionesEdicion = async (req, res) => {
   }
 };
 
+const CALIFICACION_MINIMA = 0;
+const CALIFICACION_MAXIMA = 5;
+
+// Reglas comunes para registrar o editar una evaluación.
+// Devuelve { status, message } si algo no se cumple, o null si todo está bien.
+const validarEvaluacionJurado = ({
+  req,
+  participacionJurado,
+  evaluaciones,
+  idsCriteriosConfigurados,
+  estadosPermitidos,
+}) => {
+  if (participacionJurado.id_jurado !== req.user.data.id_usuario) {
+    return {
+      status: 403,
+      message: "Esta participación no está asignada a tu usuario.",
+    };
+  }
+
+  if (!estadosPermitidos.includes(participacionJurado.estado)) {
+    return {
+      status: 400,
+      message: `No es posible evaluar: la asignación está en estado "${participacionJurado.estado}".`,
+    };
+  }
+
+  const edicion = participacionJurado.participacion.edicionCategoria.edicion;
+  const hoy = hoyBogota();
+
+  if (
+    edicion.estado_edicion !== "en_proceso" ||
+    edicion.fecha_procesamiento_premiacion ||
+    hoy < String(edicion.fecha_inicio_evaluacion) ||
+    hoy > String(edicion.fecha_fin_evaluacion)
+  ) {
+    return {
+      status: 400,
+      message: "Solo se puede evaluar durante la etapa de evaluación.",
+    };
+  }
+
+  const criterioAjeno = evaluaciones.find(
+    (evaluacion) =>
+      !idsCriteriosConfigurados.includes(Number(evaluacion.id_ecrc)),
+  );
+
+  if (criterioAjeno) {
+    return {
+      status: 400,
+      message: `El criterio ${criterioAjeno.id_ecrc} no pertenece a la rúbrica de esta categoría.`,
+    };
+  }
+
+  const fueraDeRango = evaluaciones.find((evaluacion) => {
+    const nota = Number(evaluacion.calificacion);
+    return (
+      !Number.isFinite(nota) ||
+      nota < CALIFICACION_MINIMA ||
+      nota > CALIFICACION_MAXIMA
+    );
+  });
+
+  if (fueraDeRango) {
+    return {
+      status: 400,
+      message: `Las calificaciones deben estar entre ${CALIFICACION_MINIMA} y ${CALIFICACION_MAXIMA}.`,
+    };
+  }
+
+  return null;
+};
+
 const registrarEvaluacion = async (req, res) => {
   const transaction = await sequelize.transaction();
 
@@ -1250,6 +1323,22 @@ const registrarEvaluacion = async (req, res) => {
       (criterio) => criterio.id_ecrc,
     );
 
+    const errorValidacion = validarEvaluacionJurado({
+      req,
+      participacionJurado,
+      evaluaciones,
+      idsCriteriosConfigurados,
+      estadosPermitidos: ["asignado"],
+    });
+
+    if (errorValidacion) {
+      await transaction.rollback();
+
+      return res
+        .status(errorValidacion.status)
+        .json({ message: errorValidacion.message });
+    }
+
     const criteriosFaltantes = idsCriteriosConfigurados.filter(
       (id) =>
         !evaluaciones.some(
@@ -1294,6 +1383,12 @@ const registrarEvaluacion = async (req, res) => {
         message: "La evaluación contiene criterios duplicados.",
       });
     }
+
+    // Bloquea la asignación para que dos envíos simultáneos no dupliquen notas
+    await ParticipacionJurado.findByPk(id_participacion_jurado, {
+      lock: transaction.LOCK.UPDATE,
+      transaction,
+    });
 
     const evaluacionesExistentes = await EvaluacionCriterio.findAll({
       where: {
@@ -1396,7 +1491,7 @@ const registrarEvaluacion = async (req, res) => {
 
         prioridad: "media",
 
-        id_rol: 3,
+        id_rol: 4,
 
         datos: {
           id_participacion: participacionJurado.participacion.id_participacion,
@@ -1523,6 +1618,22 @@ const editarEvaluacion = async (req, res) => {
     const idsCriteriosConfigurados = criteriosConfigurados.map(
       (criterio) => criterio.id_ecrc,
     );
+
+    const errorValidacion = validarEvaluacionJurado({
+      req,
+      participacionJurado,
+      evaluaciones,
+      idsCriteriosConfigurados,
+      estadosPermitidos: ["asignado", "evaluado"],
+    });
+
+    if (errorValidacion) {
+      await transaction.rollback();
+
+      return res
+        .status(errorValidacion.status)
+        .json({ message: errorValidacion.message });
+    }
 
     const criteriosFaltantes = idsCriteriosConfigurados.filter(
       (id) =>
