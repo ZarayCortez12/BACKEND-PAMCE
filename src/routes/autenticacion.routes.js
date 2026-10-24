@@ -18,13 +18,18 @@ const { getTokenData } = require("../configs/jwt.config");
 const { authMiddleware } = require("../configs/jwt.config");
 const { verificarToken } = require("../utils/verificarToken");
 const { verificarRol } = require("../utils/verificarRol");
+const {
+  limiteValidarCodigo,
+  limiteEnviarCodigo,
+  limiteLogin,
+} = require("../middlewares/limitesPeticiones");
 
 const router = express.Router();
-router.post("/", login);
-router.post("/enviar-codigo", sendCodigo);
-router.post("/validar-codigo", validarCodigoOTP);
+router.post("/", limiteLogin, login);
+router.post("/enviar-codigo", limiteEnviarCodigo, sendCodigo);
+router.post("/validar-codigo", limiteValidarCodigo, validarCodigoOTP);
 router.post("/reestablecer-contrasena", reestablecerContraseña);
-router.post("/login-google", loginGoogle);
+router.post("/login-google", limiteLogin, loginGoogle);
 router.get("/usuario-actual", verificarToken, obtenerUsuarioActual);
 router.post("/refresh-token", refreshAccessToken);
 router.post(

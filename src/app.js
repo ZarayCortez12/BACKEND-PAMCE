@@ -1,6 +1,5 @@
 const express = require("express");
 const config = require("./config");
-const sequelize = require("./configs/db");
 const autenticacionRoutes = require("./routes/autenticacion.routes");
 const edicionRoutes = require("./routes/edicion.routes");
 const requisitosRoutes = require("./routes/requisitos.routes");
@@ -37,29 +36,35 @@ const {
 } = require("./middlewares/validacionInicioEtapaConvocatoria");
 const { archivarEdiciones } = require("./middlewares/archivarEdiciones");
 const cookieParser = require("cookie-parser");
+const helmet = require("helmet");
 
-limpiarOTP();
-edicionEnProceso();
-edicionFinalizada();
-notificarEdicion();
-notificarEtapaEvaluacion();
-notificarEtapaConvocatoria();
-notificarRecordatorioEvaluacionesPendientes();
-procesarPremiacion();
-validacionInicioEtapaEvaluacion();
-validacionInicioEtapaConvocatoria();
-archivarEdiciones();
-
-sequelize
-  .authenticate()
-  .then(() => console.log("Conexión a la base de datos establecida."))
-  .catch((err) =>
-    console.error("No se pudo conectar a la base de datos:", err),
-  );
+// Tareas programadas. Se inician desde index.js una vez confirmada la
+// conexión a la base de datos (antes arrancaban aunque la base no respondiera)
+const iniciarTareasProgramadas = () => {
+  limpiarOTP();
+  edicionEnProceso();
+  edicionFinalizada();
+  notificarEdicion();
+  notificarEtapaEvaluacion();
+  notificarEtapaConvocatoria();
+  notificarRecordatorioEvaluacionesPendientes();
+  procesarPremiacion();
+  validacionInicioEtapaEvaluacion();
+  validacionInicioEtapaConvocatoria();
+  archivarEdiciones();
+};
 
 const allowedOrigins = [config.app.frontendUrl];
 
 const app = express();
+
+// Cabeceras de seguridad. crossOriginResourcePolicy en cross-origin para que
+// el frontend (otro dominio) pueda mostrar documentos y certificados
+app.use(
+  helmet({
+    crossOriginResourcePolicy: { policy: "cross-origin" },
+  }),
+);
 
 app.use(cookieParser());
 
@@ -88,4 +93,22 @@ app.use("/", notificacionesRoutes);
 app.use("/public", publicRoutes);
 app.use("/", auditoriaRoutes);
 
+// Manejador global de errores: responde un mensaje genérico en vez de
+// mostrar el detalle (stack) del error al cliente
+// eslint-disable-next-line no-unused-vars
+app.use((err, req, res, next) => {
+  if (err.type === "entity.parse.failed") {
+    return res.status(400).json({ message: "El cuerpo de la petición no es un JSON válido." });
+  }
+
+  console.error("Error no controlado:", err);
+
+  if (res.headersSent) {
+    return res.end();
+  }
+
+  return res.status(err.status || 500).json({ message: "Error en el servidor" });
+});
+
 module.exports = app;
+module.exports.iniciarTareasProgramadas = iniciarTareasProgramadas;

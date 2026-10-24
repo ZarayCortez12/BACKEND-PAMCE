@@ -186,6 +186,18 @@ const loginGoogle = async (req, res) => {
 
     const decodedToken = await admin.auth().verifyIdToken(token);
 
+    // Solo se acepta un correo verificado por Google: si el proyecto de
+    // Firebase permite otros métodos, alguien podría registrar el correo
+    // de otra persona sin verificarlo y entrar con su cuenta
+    if (
+      !decodedToken.email_verified ||
+      decodedToken.firebase?.sign_in_provider !== "google.com"
+    ) {
+      return res.status(401).json({
+        message: "Debes iniciar sesión con una cuenta de Google verificada.",
+      });
+    }
+
     const usuario = await Usuario.findOne({
       where: { correo_electronico: decodedToken.email },
       include: [
@@ -348,16 +360,19 @@ const sendCodigo = async (req, res) => {
 };
 
 const validarCodigoOTP = async (req, res) => {
+  const { correo_electronico, codigo } = req.body;
+
+  // Se valida antes de abrir la transacción: el return temprano la dejaba
+  // abierta y con varias peticiones se agotaban las conexiones a la base
+  if (!correo_electronico || !codigo) {
+    return res.status(400).json({
+      message: "Correo y código son requeridos",
+    });
+  }
+
   const t = await sequelize.transaction();
 
   try {
-    const { correo_electronico, codigo } = req.body;
-
-    if (!correo_electronico || !codigo) {
-      return res.status(400).json({
-        message: "Correo y código son requeridos",
-      });
-    }
 
     const ahora = new Date();
 
