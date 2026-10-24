@@ -27,8 +27,15 @@ const sequelize = require("../configs/db");
 const { de } = require("zod/v4/locales");
 const { setAuditContext } = require("../utils/audits");
 
+// Credenciales de la cuenta de servicio de Firebase. En producción (Docker)
+// se monta el archivo y se indica con FIREBASE_CREDENTIALS_PATH, para que la
+// clave privada no quede dentro del código ni de la imagen.
+const rutaCredencialesFirebase = process.env.FIREBASE_CREDENTIALS_PATH
+  ? require("path").resolve(process.env.FIREBASE_CREDENTIALS_PATH)
+  : require("path").join(__dirname, "..", "utils", "serviceAccountKey.json");
+
 admin.initializeApp({
-  credential: admin.credential.cert(require("../utils/serviceAccountKey.json")),
+  credential: admin.credential.cert(require(rutaCredencialesFirebase)),
 });
 
 const login = async (req, res) => {

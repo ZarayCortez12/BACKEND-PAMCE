@@ -1,0 +1,10 @@
+node_modules
+.git
+.env
+.env.*
+!.env.example
+src/documentos
+src/utils/serviceAccountKey.json
+*.backup
+*.dump
+diagrama-modelos.svg
