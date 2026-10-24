@@ -149,24 +149,18 @@ function validacionInicioEtapaEvaluacion() {
                   <p>Hola <b>${participacion.usuario.primer_nombre}</b>,</p>
         
                   <p>
-                    Nos complace informarte que tu postulación a la edición
-                    <b>${edicion.nombre_edicion}</b> ha sido
-                    <b>rechazada</b> después de la revisión de los requisitos establecidos.
+                    Te informamos que tu postulación a la edición
+                    <b>${edicion.nombre_edicion}</b> ha sido <b>rechazada</b>
+                    porque no fue revisada antes del cierre de la etapa de convocatoria.
                   </p>
-        
+
                   <p>
                     <b>Categoría:</b> ${participacion.edicionCategoria.categoria.nombre_categoria}
                   </p>
-        
+
                   <p>
-                    Tu postulación continuará a la etapa de evaluación,
-                    en la cual será revisada de acuerdo con los criterios establecidos
-                    para la categoría.
-                  </p>
-        
-                  <p>
-                    Te notificaremos por este medio y por correo electrónico
-                    cualquier actualización relacionada con el proceso.
+                    Agradecemos tu interés y te invitamos a participar
+                    en próximas ediciones.
                   </p>
         
                   <p>

@@ -21,6 +21,7 @@ const {
 const { Op, fn, col, where } = require("sequelize");
 const { Fn } = require("sequelize/lib/utils");
 const { setAuditContext } = require("../utils/audits");
+const { hoyBogota } = require("../utils/fechas");
 const NotificacionService = require("../middlewares/notificaciones.js");
 
 const listarParticipacionesPorEdicion = async (req, res) => {
@@ -990,6 +991,47 @@ const cambiarEstadoParticipacion = async (req, res) => {
       return res.status(404).json({ message: "Participación no encontrada" });
     }
 
+    // Reglas de la revisión de postulaciones (las mismas de la interfaz)
+    if (!["aceptada", "rechazada"].includes(estado)) {
+      await transaction.rollback();
+      return res
+        .status(400)
+        .json({ message: "Estado no válido para una postulación." });
+    }
+
+    if (participacionUpdate.estado !== "pendiente") {
+      await transaction.rollback();
+      return res.status(400).json({
+        message: `Solo se pueden revisar postulaciones pendientes (esta está ${participacionUpdate.estado}).`,
+      });
+    }
+
+    if (estado === "rechazada" && !String(observacion ?? "").trim()) {
+      await transaction.rollback();
+      return res.status(400).json({
+        message: "Debe indicar una observación para rechazar la postulación.",
+      });
+    }
+
+    const edicionRevision = await Edicion.findByPk(
+      participacionUpdate.id_edicion,
+      { transaction },
+    );
+
+    // Al iniciar la evaluación, el sistema rechaza solo las pendientes:
+    // la revisión manual solo tiene sentido antes de esa fecha
+    if (
+      !edicionRevision ||
+      edicionRevision.estado_edicion !== "en_proceso" ||
+      hoyBogota() >= String(edicionRevision.fecha_inicio_evaluacion)
+    ) {
+      await transaction.rollback();
+      return res.status(400).json({
+        message:
+          "Las postulaciones solo se pueden revisar antes del inicio de la etapa de evaluación.",
+      });
+    }
+
     participacionUpdate.estado = estado;
     if (observacion) participacionUpdate.observacion = observacion;
     participacionUpdate.fecha_revision = new Date();
@@ -1115,9 +1157,9 @@ const cambiarEstadoParticipacion = async (req, res) => {
           <p>Hola <b>${usuario.primer_nombre}</b>,</p>
 
           <p>
-            Nos complace informarte que tu postulación a la edición
-            <b>${edicion.nombre_edicion}</b> ha sido
-            <b>rechazada</b> después de la revisión de los requisitos establecidos.
+            Te informamos que, después de la revisión de los requisitos
+            establecidos, tu postulación a la edición
+            <b>${edicion.nombre_edicion}</b> ha sido <b>rechazada</b>.
           </p>
 
           <p>
@@ -1125,14 +1167,12 @@ const cambiarEstadoParticipacion = async (req, res) => {
           </p>
 
           <p>
-            Tu postulación continuará a la etapa de evaluación,
-            en la cual será revisada de acuerdo con los criterios establecidos
-            para la categoría.
+            <b>Observación del comité:</b> ${participacionUpdate.observacion}
           </p>
 
           <p>
-            Te notificaremos por este medio y por correo electrónico
-            cualquier actualización relacionada con el proceso.
+            Agradecemos tu interés. Te invitamos a tener en cuenta esta
+            observación y a participar en próximas ediciones.
           </p>
 
           <p>
