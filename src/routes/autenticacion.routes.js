@@ -17,6 +17,7 @@ const {
 const { getTokenData } = require("../configs/jwt.config");
 const { authMiddleware } = require("../configs/jwt.config");
 const { verificarToken } = require("../utils/verificarToken");
+const { verificarRol } = require("../utils/verificarRol");
 
 const router = express.Router();
 router.post("/", login);
@@ -29,6 +30,7 @@ router.post("/refresh-token", refreshAccessToken);
 router.post(
   "/enviar-correos-convocatoria",
   verificarToken,
+  verificarRol("director"),
   enviarCorreosConvocatoria,
 );
 router.post("/logout", verificarToken, logout);

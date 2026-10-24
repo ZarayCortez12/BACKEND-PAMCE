@@ -147,11 +147,13 @@ router.get(
 router.get(
   "/jurados/:id_jurado/participaciones",
   verificarToken,
+  verificarRol("administrador", "director"),
   obtenerParticipacionesEvaluadasJurado,
 );
 router.get(
   "/jurados/edicion/:id_edicion/participaciones",
   verificarToken,
+  verificarRol("jurado"),
   obtenerParticipacionesEdicion,
 );
 router.get(
@@ -160,8 +162,8 @@ router.get(
   verificarRol("director"),
   listarJuradosDisponiblesAsignar,
 );
-router.post("/evaluacion-jurado", verificarToken, registrarEvaluacion);
-router.put("/editar-evaluacion", verificarToken, editarEvaluacion);
+router.post("/evaluacion-jurado", verificarToken, verificarRol("jurado"), registrarEvaluacion);
+router.put("/editar-evaluacion", verificarToken, verificarRol("jurado"), editarEvaluacion);
 
 //Rutas para Participantes
 router.get(
@@ -179,50 +181,61 @@ router.post(
 router.put(
   "/editar-informacion-participante/:numero_documento",
   verificarToken,
+  verificarRol("administrador", "director"),
   editarInformacionParticipante,
 );
 router.put(
   "/cambiar-estado-participante",
   verificarToken,
+  verificarRol("administrador", "director"),
   cambiarEstadoParticipante,
 );
 router.get(
   "/obtener-participante/:id_usuario",
   verificarToken,
+  verificarRol("administrador", "director"),
   obtenerParticipante,
 );
 router.get(
   "/ediciones/participante/:id_participante",
   verificarToken,
+  verificarRol("administrador", "director", "participante"),
   obtenerEdicionesParticipacionParticipante,
 );
 router.get(
   "/ediciones/:id_edicion/categorias/participante/:id_participante",
   verificarToken,
+  verificarRol("administrador", "director", "participante"),
   obtenerCategoriasEdicionesParticipacionParticipante,
 );
 router.get(
   "/convocatorias/participante/:id_participante",
   verificarToken,
+  verificarRol("administrador", "director"),
   obtenerConvocatoriasParticipante,
 );
 router.get(
   "/participaciones/:id_usuario",
   verificarToken,
+  verificarRol("administrador", "director", "participante"),
   obtenerParticipaciones,
 );
 router.get(
   "/ediciones/participante/:id_participante",
   verificarToken,
+  verificarRol("administrador", "director", "participante"),
   obtenerEdicionesPorParticipante,
 );
 router.get(
   "/participante/participaciones/:id_usuario",
   verificarToken,
+  verificarRol("administrador", "director", "participante"),
   obtenerParticipacionesPorParticipante,
 );
 router.get(
   "/participantes/:id_participacion/certificado",
+  verificarToken,
+  verificarRol("participante"),
   generarCertificadoParticipacion,
 );
 router.get(
@@ -248,6 +261,7 @@ router.put("/cambiar-rol-activo/:id_usuario", verificarToken, cambiarRolActivo);
 router.get(
   "/obtener-usuario/:numero_documento",
   verificarToken,
+  verificarRol("administrador", "director"),
   obtenerUsuarioPorCedula,
 );
 router.get(
@@ -263,6 +277,7 @@ router.get(
 router.get(
   "/filtrar-ganadores-edicion/:idEdicion",
   verificarToken,
+  verificarRol("director"),
   filtrarGanadoresEdicion,
 );
 

@@ -6,10 +6,11 @@ const {
   obtenerRegistroAuditoria,
 } = require("../controller/auditoria.controller");
 const { verificarToken } = require("../utils/verificarToken");
+const { verificarRol } = require("../utils/verificarRol");
 
 const router = express.Router();
 
-router.get("/auditoria", verificarToken, listarRegistrosAuditoria);
-router.get("/auditoria/:id_registro", verificarToken, obtenerRegistroAuditoria);
+router.get("/auditoria", verificarToken, verificarRol("administrador"), listarRegistrosAuditoria);
+router.get("/auditoria/:id_registro", verificarToken, verificarRol("administrador"), obtenerRegistroAuditoria);
 
 module.exports = router;

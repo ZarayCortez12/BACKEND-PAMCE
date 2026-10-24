@@ -33,6 +33,7 @@ router.get(
 router.get(
   "/requisitos/configuracion/:id_requisito_edicion_categoria",
   verificarToken,
+  verificarRol("director", "jurado", "participante"),
   obtenerConfiguracionRequisitoDeCategoriaEdicion,
 );
 router.post(
@@ -99,18 +100,21 @@ router.delete(
 router.get(
   "/requisitos/filtrar/:idEdicion",
   verificarToken,
+  verificarRol("director"),
   filtrarRequisitosEdicion,
 );
-router.put("/requisitos/:idEdicionRequisito", verificarToken, editarRequisito);
+router.put("/requisitos/:idEdicionRequisito", verificarToken, verificarRol("director"), editarRequisito);
 router.delete(
   "/requisitos/:idEdicionRequisito",
   verificarToken,
+  verificarRol("director"),
   eliminarRequisito,
 );
 
 router.get(
   "/requisitos/categoria/filtrar/:idEdicionCategoria",
   verificarToken,
+  verificarRol("director"),
   filtrarRequisitosCategoriaEdicion,
 );
 

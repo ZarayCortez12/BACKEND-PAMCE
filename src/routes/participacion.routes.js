@@ -41,16 +41,19 @@ router.get(
 router.get(
   "/participaciones/ganadoras/categoria/:id_edicion_categoria",
   verificarToken,
+  verificarRol("director"),
   listarParticipacionesGanadorasPorEdicionCategoria,
 );
 router.get(
   "/postulaciones/categoria/:id_edicion_categoria",
   verificarToken,
+  verificarRol("director", "jurado", "participante"),
   listarPostulacionesPorCategoriaEdicion,
 );
 router.get(
   "/participaciones/categoria/:id_edicion_categoria",
   verificarToken,
+  verificarRol("director", "jurado", "participante"),
   listarParticipacionesPorCategoriaEdicion,
 );
 router.get(
@@ -62,11 +65,13 @@ router.get(
 router.get(
   "/participaciones/ganadoras/:id_edicion",
   verificarToken,
+  verificarRol("director", "jurado", "participante"),
   listarParticipacionesGanadorasPorEdicion,
 );
 router.put(
   "/participaciones/requisitos/respuesta/:id_participacion_requisito",
   verificarToken,
+  verificarRol("participante"),
   buscarRespuestaParticipacion,
   multerUpdateFile.single("archivo"),
   editarRespuestaParticipacion,
@@ -98,11 +103,13 @@ router.get(
 router.post(
   "/participaciones/jurados/:id_participacion",
   verificarToken,
+  verificarRol("director"),
   agregarJuradoAParticipacion,
 );
 router.put(
   "/participaciones/jurados/:id_participacion_jurado",
   verificarToken,
+  verificarRol("director"),
   cambiarEstadoAsignacionJurado,
 );
 
@@ -115,6 +122,7 @@ router.get(
 router.get(
   "/documento/:id_participacion_requisito",
   verificarToken,
+  verificarRol("administrador", "director", "jurado", "participante"),
   mostrarDocumento,
 );
 router.put(

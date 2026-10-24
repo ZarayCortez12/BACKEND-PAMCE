@@ -21,44 +21,52 @@ const router = express.Router();
 router.get(
   "/rubricas/listar-rubricas",
   verificarToken,
+  verificarRol("director"),
   listarRubricasConCriterios,
 );
-router.post("/rubricas/crear", verificarToken, crearRubrica);
-router.post("/criterios/crear", verificarToken, crearCriterio);
-router.post("/rubricas/criterio", verificarToken, crearRubricaCriterio);
+router.post("/rubricas/crear", verificarToken, verificarRol("director"), crearRubrica);
+router.post("/criterios/crear", verificarToken, verificarRol("director"), crearCriterio);
+router.post("/rubricas/criterio", verificarToken, verificarRol("director"), crearRubricaCriterio);
 router.put(
   "/rubricas/editar-porcentaje/:id_ecrc",
   verificarToken,
+  verificarRol("director"),
   editarPorcentajeCriterio,
 );
 router.get(
   "/rubricas/filtradas/:id_edicion_categoria",
   verificarToken,
+  verificarRol("director"),
   listarRubricasFiltradasCategoria,
 );
 router.post(
   "/rubricas/agregar/:id_edicion_categoria",
   verificarToken,
+  verificarRol("director"),
   agregarRubricaAEdicionCategoria,
 );
 router.post(
   "/rubricas/agregar-porcentajes/:id_edicion_categoria",
   verificarToken,
+  verificarRol("director"),
   agregarPorcentajesCriterio,
 );
 router.put(
   "/rubricas/editar-porcentaje-rubrica/:id_ecr",
   verificarToken,
+  verificarRol("director"),
   editarPorcentajeRubrica,
 );
 router.delete(
   "/rubricas/eliminar/:id_ecr",
   verificarToken,
+  verificarRol("director"),
   eliminarRubricaDeEdicionCategoria,
 );
 router.get(
   "/rubricas/criterios/:id_rubrica",
   verificarToken,
+  verificarRol("director"),
   obtenerRubricaCriterios,
 );
 router.get(
