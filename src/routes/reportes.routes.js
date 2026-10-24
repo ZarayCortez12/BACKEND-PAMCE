@@ -13,7 +13,6 @@ const {
   reportesUsuariosPDF,
   reportesUsuariosExcel,
 } = require("../controller/reportes.controller");
-const upload = require("../middlewares/multer");
 const { verificarToken } = require("../utils/verificarToken");
 const { verificarRol } = require("../utils/verificarRol");
 

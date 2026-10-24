@@ -49,7 +49,7 @@ router.post(
 router.post(
   "/crear-participacion",
   validarAccesoConvocatoria,
-  upload.any(),
+  upload.anyConManejo(),
   registrarParticipacionPublico,
 );
 router.post("/usuarios", agregaUsuarioPublico);

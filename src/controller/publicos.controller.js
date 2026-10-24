@@ -24,6 +24,7 @@ const {
 const sequelize = require("../configs/db");
 const jwt = require("jsonwebtoken");
 const path = require("path");
+const fs = require("fs");
 const NotificacionService = require("../middlewares/notificaciones.js");
 
 const obtenerEdicionEnProcesoPublico = async (req, res) => {
@@ -558,18 +559,56 @@ const obtenerEdicionesFanPage = async (req, res) => {
   }
 };
 
+// Si la postulación no se registra, se borran los archivos que multer ya guardó
+const eliminarArchivosSubidos = (req) => {
+  for (const file of req.files || []) {
+    fs.unlink(file.path, (error) => {
+      if (error && error.code !== "ENOENT") {
+        console.error("No se pudo eliminar el archivo subido:", error);
+      }
+    });
+  }
+};
+
 const registrarParticipacionPublico = async (req, res) => {
+  // Las validaciones van antes de abrir la transacción para no dejarla abierta
+  const rechazar = (status, message) => {
+    eliminarArchivosSubidos(req);
+    return res.status(status).json({ message });
+  };
+
+  const { id_usuario, id_edicion, id_edicion_categoria, numero_documento } =
+    req.body;
+
+  if (!id_usuario || !id_edicion || !id_edicion_categoria) {
+    return rechazar(400, "Datos obligatorios incompletos");
+  }
+
+  // La edición del formulario debe ser la misma que validó validarAccesoConvocatoria
+  if (Number(id_edicion) !== Number(req.query.id_edicion)) {
+    return rechazar(400, "La edición del formulario no coincide con la convocatoria.");
+  }
+
+  const usuarioPostulado = await Usuario.findByPk(id_usuario);
+
+  if (
+    !usuarioPostulado ||
+    String(usuarioPostulado.numero_documento) !== String(numero_documento)
+  ) {
+    return rechazar(400, "Los datos del participante no son válidos.");
+  }
+
+  const categoriaDeLaEdicion = await EdicionCategoria.findOne({
+    where: { id_edicion_categoria, id_edicion, estado: "activo" },
+  });
+
+  if (!categoriaDeLaEdicion) {
+    return rechazar(400, "La categoría seleccionada no está disponible en esta edición.");
+  }
+
   const transaction = await sequelize.transaction();
 
   try {
-    const { id_usuario, id_edicion, id_edicion_categoria } = req.body;
-
-    if (!id_usuario || !id_edicion || !id_edicion_categoria) {
-      return res.status(400).json({
-        message: "Datos obligatorios incompletos",
-      });
-    }
-
     const existeParticipacion = await Participacion.findOne({
       where: {
         id_usuario,
@@ -580,10 +619,11 @@ const registrarParticipacionPublico = async (req, res) => {
     });
 
     if (existeParticipacion) {
-      return res.status(400).json({
-        message:
-          "El usuario ya está registrado como participante para esa categoría en la edición. Cambie la categoría a la que desea participar",
-      });
+      await transaction.rollback();
+      return rechazar(
+        400,
+        "El usuario ya está registrado como participante para esa categoría en la edición. Cambie la categoría a la que desea participar",
+      );
     }
 
     const participacion = await Participacion.create(
@@ -659,24 +699,26 @@ const registrarParticipacionPublico = async (req, res) => {
 
     if (!participacionFinal) {
       await transaction.rollback();
-      return res.status(500).json({
-        message: "Error al registrar la postulación",
-      });
+      return rechazar(500, "Error al registrar la postulación");
     }
 
-    const usuario = await Usuario.findByPk(id_usuario);
+    const usuario = usuarioPostulado;
     const participante = await UsuarioRol.findOne({
       where: {
         id_usuario: id_usuario,
         id_rol: 4,
       },
+      transaction,
     });
 
     if (!participante) {
-      await UsuarioRol.create({
-        id_usuario: id_usuario,
-        id_rol: 4,
-      });
+      await UsuarioRol.create(
+        {
+          id_usuario: id_usuario,
+          id_rol: 4,
+        },
+        { transaction },
+      );
     }
     const edicion = await Edicion.findByPk(id_edicion);
     const edicionCategoria =
@@ -746,11 +788,19 @@ const registrarParticipacionPublico = async (req, res) => {
       participacion: participacionFinal,
     });
   } catch (error) {
+    // Si el error ocurre después del commit, la postulación ya quedó guardada
+    // y sus archivos no se deben borrar
+    const postulacionGuardada = transaction.finished === "commit";
+
     if (!transaction.finished) {
       await transaction.rollback();
     }
 
     console.error("Error al registrar la postulación:", error);
+
+    if (!postulacionGuardada) {
+      eliminarArchivosSubidos(req);
+    }
 
     return res.status(500).json({
       message: "Error al registrar la postulación",
