@@ -1,4 +1,6 @@
 const cron = require("node-cron");
+const { hoyBogota } = require("../utils/fechas");
+const { etapaYaEjecutada } = require("../utils/etapasEjecutadas");
 const { Op } = require("sequelize");
 const {
   Edicion,
@@ -20,16 +22,18 @@ function validacionInicioEtapaEvaluacion() {
     "50 0 * * *",
     async () => {
       try {
-        const hoy = dayjs().startOf("day");
-        const inicioDia = hoy.toDate();
-        const finDia = hoy.endOf("day").toDate();
+        // Fecha de Colombia (el servidor puede estar en UTC). Se ejecuta
+        // durante toda la etapa de evaluación y no solo el primer día: si el
+        // servidor estuvo apagado ese día, se pone al día. Es seguro
+        // repetirlo porque solo actúa sobre postulaciones que siguen
+        // pendientes o aceptadas sin jurado.
+        const hoy = hoyBogota();
 
         const edicion = await Edicion.findOne({
           where: {
             estado_edicion: "en_proceso",
-            fecha_inicio_evaluacion: {
-              [Op.between]: [inicioDia, finDia],
-            },
+            fecha_inicio_evaluacion: { [Op.lte]: hoy },
+            fecha_fin_evaluacion: { [Op.gte]: hoy },
           },
         });
 
@@ -37,6 +41,16 @@ function validacionInicioEtapaEvaluacion() {
         console.log("Edicion:", edicion);
 
         if (!edicion) {
+          return;
+        }
+
+        if (
+          await etapaYaEjecutada({
+            tipo: "INICIO_ETAPA_EVALUACION",
+            edicion,
+            campoFecha: "fecha_inicio_evaluacion",
+          })
+        ) {
           return;
         }
 

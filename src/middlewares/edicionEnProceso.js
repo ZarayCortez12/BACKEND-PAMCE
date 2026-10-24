@@ -15,12 +15,25 @@ function edicionEnProceso() {
       const hoy = hoyBogota();
 
       try {
+        // Solo puede haber una edición en proceso
+        const enProceso = await Edicion.findOne({
+          where: { estado_edicion: "en_proceso" },
+        });
+
+        if (enProceso) {
+          return;
+        }
+
+        // <= en lugar de ==: si el servidor estuvo apagado el día de inicio,
+        // la edición pasa a en_proceso en la siguiente ejecución. Solo toma
+        // ediciones "activo", así que no se repite una vez iniciada.
         const edicion = await Edicion.findOne({
           where: {
-            fecha_inicio: { [Op.eq]: hoy },
+            fecha_inicio: { [Op.lte]: hoy },
             fecha_fin: { [Op.gte]: hoy },
             estado_edicion: "activo",
           },
+          order: [["fecha_inicio", "ASC"]],
         });
 
         const usuarios = await Usuario.findAll({

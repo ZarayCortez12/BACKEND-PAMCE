@@ -1,4 +1,6 @@
 const cron = require("node-cron");
+const { hoyBogota } = require("../utils/fechas");
+const { etapaYaEjecutada } = require("../utils/etapasEjecutadas");
 const { Op } = require("sequelize");
 const {
   Edicion,
@@ -26,17 +28,31 @@ function validacionInicioEtapaConvocatoria() {
     async () => {
       try {
         console.log("validacionInicioEtapaConvocatoria Ingres");
-        const hoy = dayjs().startOf("day");
-        console.log("hoy", hoy);
+        // Fecha de Colombia (el servidor puede estar en UTC). Se ejecuta
+        // durante toda la convocatoria para ponerse al día si el servidor
+        // estuvo apagado el día de inicio; solo revisa categorías activas,
+        // así que una categoría ya corregida o inactivada no se vuelve a tocar.
+        const hoy = hoyBogota();
 
         const edicion = await Edicion.findOne({
           where: {
             estado_edicion: "en_proceso",
-            fecha_inicio_convocatoria: hoy,
+            fecha_inicio_convocatoria: { [Op.lte]: hoy },
+            fecha_fin_convocatoria: { [Op.gte]: hoy },
           },
         });
 
         if (!edicion) {
+          return;
+        }
+
+        if (
+          await etapaYaEjecutada({
+            tipo: "INICIO_ETAPA_CONVOCATORIA",
+            edicion,
+            campoFecha: "fecha_inicio_convocatoria",
+          })
+        ) {
           return;
         }
 
