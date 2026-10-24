@@ -13,7 +13,7 @@ const Convocatoria = sequelize.define(
       type: DataTypes.INTEGER,
       allowNull: false,
       references: {
-        model: "edicion",
+        model: "ediciones",
         key: "id_edicion",
       },
       onDelete: "CASCADE",

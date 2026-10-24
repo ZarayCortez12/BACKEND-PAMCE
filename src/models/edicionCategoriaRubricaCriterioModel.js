@@ -15,7 +15,7 @@ const EdicionCategoriaRubricaCriterio = sequelize.define(
       allowNull: false,
       references: {
         model: "edicion_categoria",
-        key: "id_categoria",
+        key: "id_edicion_categoria",
       },
       onDelete: "CASCADE",
       onUpdate: "CASCADE",
