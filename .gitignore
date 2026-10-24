@@ -1,0 +1,23 @@
+# Dependencias
+/node_modules
+
+# Variables de entorno y credenciales (nunca versionar)
+.env
+.env.*
+!.env.example
+src/utils/serviceAccountKey.json
+serviceAccountKey*.json
+
+# Archivos subidos por los usuarios (datos personales)
+src/documentos/
+documentos/
+
+# Respaldos de base de datos
+*.backup
+*.dump
+*.sql
+
+# Sistema / editor
+.DS_Store
+Thumbs.db
+*.log
