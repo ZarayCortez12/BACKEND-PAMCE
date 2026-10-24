@@ -510,6 +510,8 @@ const editarRespuestaParticipacion = async (req, res) => {
       });
     }
 
+    let archivoAnterior = null;
+
     if (req.file) {
       if (respuesta.tipo_respuesta !== "documento") {
         await transaction.rollback();
@@ -517,6 +519,8 @@ const editarRespuestaParticipacion = async (req, res) => {
           message: "La respuesta seleccionada no corresponde a un documento.",
         });
       }
+
+      archivoAnterior = respuesta.ruta_archivo;
 
       await respuesta.update(
         {
@@ -557,6 +561,16 @@ const editarRespuestaParticipacion = async (req, res) => {
     }
 
     await transaction.commit();
+
+    // Si el archivo nuevo tiene otra extensión, el anterior queda con otro
+    // nombre: se elimina para no dejar archivos huérfanos en el servidor
+    if (archivoAnterior && archivoAnterior !== respuesta.ruta_archivo) {
+      fs.unlink(path.join(__dirname, "..", archivoAnterior), (error) => {
+        if (error && error.code !== "ENOENT") {
+          console.error("No se pudo eliminar el archivo anterior:", error);
+        }
+      });
+    }
 
     return res.status(200).json({
       message: "Respuesta actualizada correctamente.",

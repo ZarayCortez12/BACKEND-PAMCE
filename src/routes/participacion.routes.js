@@ -73,7 +73,7 @@ router.put(
   verificarToken,
   verificarRol("participante"),
   buscarRespuestaParticipacion,
-  multerUpdateFile.single("archivo"),
+  multerUpdateFile.singleConManejo("archivo"),
   editarRespuestaParticipacion,
 );
 router.get(
