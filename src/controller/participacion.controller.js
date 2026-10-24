@@ -872,22 +872,19 @@ const obtenerParticipacionParticipante = async (req, res) => {
 
 const mostrarDocumento = async (req, res) => {
   try {
-    const accessToken = req.cookies.accessToken;
-    if (!accessToken) {
-      return res.status(401).json({ message: "No autenticado" });
-    }
-
-    let decoded;
-    try {
-      decoded = jwt.verify(accessToken, process.env.JWT_SECRET);
-    } catch (error) {
-      return res.status(403).json({ message: "Token inválido" });
-    }
-
     const { id_participacion_requisito } = req.params;
 
     const documento = await ParticipacionRequisito.findByPk(
       id_participacion_requisito,
+      {
+        include: [
+          {
+            model: Participacion,
+            as: "participacion",
+            attributes: ["id_participacion", "id_usuario"],
+          },
+        ],
+      },
     );
 
     if (!documento || documento.tipo_respuesta !== "documento") {
@@ -896,7 +893,42 @@ const mostrarDocumento = async (req, res) => {
       });
     }
 
-    const rutaAbsoluta = path.join(__dirname, "..", documento.ruta_archivo);
+    // Administrador y director ven todo; el participante solo lo suyo
+    // y el jurado solo las participaciones que tiene asignadas
+    const id_usuario = req.user.data.id_usuario;
+    const rol = req.user.data.rol_activo.nombre_rol;
+
+    let tieneAcceso = rol === "administrador" || rol === "director";
+
+    if (rol === "participante") {
+      tieneAcceso = documento.participacion?.id_usuario === id_usuario;
+    }
+
+    if (rol === "jurado") {
+      const asignacion = await ParticipacionJurado.findOne({
+        where: {
+          id_participacion: documento.id_participacion,
+          id_jurado: id_usuario,
+        },
+      });
+      tieneAcceso = Boolean(asignacion);
+    }
+
+    if (!tieneAcceso) {
+      return res.status(403).json({
+        message: "No tienes permiso para ver este documento",
+      });
+    }
+
+    // La ruta guardada debe quedar dentro de la carpeta de documentos
+    const carpetaDocumentos = path.resolve(__dirname, "..", "documentos");
+    const rutaAbsoluta = path.resolve(__dirname, "..", documento.ruta_archivo);
+
+    if (!rutaAbsoluta.startsWith(carpetaDocumentos + path.sep)) {
+      return res.status(404).json({
+        message: "Documento no encontrado",
+      });
+    }
 
     if (!fs.existsSync(rutaAbsoluta)) {
       return res.status(404).json({
@@ -904,10 +936,17 @@ const mostrarDocumento = async (req, res) => {
       });
     }
 
+    // Solo PDF e imágenes se muestran en el navegador; lo demás se descarga,
+    // así un archivo HTML subido nunca se ejecuta dentro del sitio
+    const extension = path.extname(rutaAbsoluta).toLowerCase();
+    const seMuestra = [".pdf", ".png", ".jpg", ".jpeg"].includes(extension);
+    const nombre = encodeURIComponent(documento.nombre_archivo || "documento");
+
     res.setHeader(
       "Content-Disposition",
-      `inline; filename="${documento.nombre_archivo}"`,
+      `${seMuestra ? "inline" : "attachment"}; filename*=UTF-8''${nombre}`,
     );
+    res.setHeader("X-Content-Type-Options", "nosniff");
 
     res.sendFile(rutaAbsoluta);
   } catch (error) {
