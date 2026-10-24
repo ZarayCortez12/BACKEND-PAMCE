@@ -474,7 +474,7 @@ const cambiarEstado = async (req, res) => {
     await EdicionCategoria.update(
       {
         estado,
-        observacion_inactivacion: estado === "inactiva" ? observacion : null,
+        observacion_inactivacion: estado === "inactivo" ? observacion : null,
         fecha_actualizacion: new Date(),
       },
       {

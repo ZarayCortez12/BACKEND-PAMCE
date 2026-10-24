@@ -1356,6 +1356,69 @@ const agregarJuradoAParticipacion = async (req, res) => {
       });
     }
 
+    // Mismas reglas que la lista de jurados disponibles del frontend,
+    // más las de estado y etapa
+    const rechazarAsignacion = async (message) => {
+      await transaction.rollback();
+      return res.status(400).json({ message });
+    };
+
+    const esJuradoActivo = jurado?.roles?.some(
+      (rol) => rol.id_rol === 3 && rol.UsuarioRol?.estado_rol === "activo",
+    );
+
+    if (!esJuradoActivo) {
+      return rechazarAsignacion("El usuario seleccionado no es un jurado activo.");
+    }
+
+    if (participacion.estado !== "aceptada") {
+      return rechazarAsignacion(
+        "Solo se pueden asignar jurados a participaciones aceptadas.",
+      );
+    }
+
+    const edicionAsignacion = participacion.edicionCategoria.edicion;
+
+    if (
+      edicionAsignacion.estado_edicion !== "en_proceso" ||
+      edicionAsignacion.fecha_procesamiento_premiacion ||
+      hoyBogota() > String(edicionAsignacion.fecha_fin_evaluacion)
+    ) {
+      return rechazarAsignacion(
+        "Ya no se pueden asignar jurados: la etapa de evaluación terminó.",
+      );
+    }
+
+    const participaEnLaEdicion = await Participacion.findOne({
+      where: {
+        id_usuario: id_jurado,
+        id_edicion: participacion.id_edicion,
+      },
+      transaction,
+    });
+
+    if (participaEnLaEdicion) {
+      return rechazarAsignacion(
+        "El jurado no puede participar como postulante en la misma edición.",
+      );
+    }
+
+    const asignacionExistente = await ParticipacionJurado.findOne({
+      where: {
+        id_participacion,
+        id_jurado,
+        estado: { [Op.in]: ["asignado", "evaluado"] },
+      },
+      transaction,
+      lock: transaction.LOCK.UPDATE,
+    });
+
+    if (asignacionExistente) {
+      return rechazarAsignacion(
+        "Este jurado ya está asignado a la participación.",
+      );
+    }
+
     const asignado = await ParticipacionJurado.create(
       {
         id_participacion,
@@ -1482,6 +1545,9 @@ const agregarJuradoAParticipacion = async (req, res) => {
       jurado: jurado_asignado,
     });
   } catch (error) {
+    if (!transaction.finished) {
+      await transaction.rollback();
+    }
     console.error(error);
     res.status(500).json({ error: "Error en el servidor" });
   }
