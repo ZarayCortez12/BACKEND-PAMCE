@@ -9,13 +9,14 @@ const {
 } = require("../models");
 const NotificacionService = require("./notificaciones.js");
 const dayjs = require("dayjs");
+const { hoyBogota } = require("../utils/fechas");
 const path = require("path");
 
 function edicionFinalizada() {
   cron.schedule(
     "0 0 * * *",
     async () => {
-      const hoy = dayjs().utcOffset(-300).format("YYYY-MM-DD");
+      const hoy = hoyBogota();
 
       try {
         const participantes = [];

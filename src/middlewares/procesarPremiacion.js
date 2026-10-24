@@ -18,6 +18,7 @@ const {
   EvaluacionCriterio,
 } = require("../models/index.js");
 const dayjs = require("dayjs");
+const { hoyBogota } = require("../utils/fechas");
 const NotificacionService = require("./notificaciones.js");
 const path = require("path");
 const localeEs = require("dayjs/locale/es");
@@ -31,9 +32,9 @@ function procesarPremiacion() {
       const transaction = await sequelize.transaction();
 
       try {
-        const hoy = dayjs().utcOffset(-300).startOf("day");
+        const hoy = hoyBogota();
 
-        console.log("Fecha actual:", hoy.format("YYYY-MM-DD"));
+        console.log("Fecha actual:", hoy);
 
         const edicion = await Edicion.findOne({
           where: {
@@ -50,11 +51,11 @@ function procesarPremiacion() {
           return;
         }
 
-        const inicioPremiacion = dayjs(edicion.fecha_inicio_premiacion).startOf(
-          "day",
+        const inicioPremiacion = dayjs(edicion.fecha_inicio_premiacion).format(
+          "YYYY-MM-DD",
         );
 
-        if (hoy.isBefore(inicioPremiacion)) {
+        if (hoy < inicioPremiacion) {
           await transaction.rollback();
           return;
         }

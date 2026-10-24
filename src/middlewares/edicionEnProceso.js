@@ -2,6 +2,7 @@ const cron = require("node-cron");
 const { Op } = require("sequelize");
 const { Edicion, Usuario, Rol } = require("../models");
 const dayjs = require("dayjs");
+const { hoyBogota } = require("../utils/fechas");
 const NotificacionService = require("./notificaciones.js");
 const path = require("path");
 const localeEs = require("dayjs/locale/es");
@@ -11,7 +12,7 @@ function edicionEnProceso() {
   cron.schedule(
     "0 0 * * *",
     async () => {
-      const hoy = dayjs().utcOffset(-300).format("YYYY-MM-DD");
+      const hoy = hoyBogota();
 
       try {
         const edicion = await Edicion.findOne({
