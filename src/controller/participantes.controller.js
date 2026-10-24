@@ -1124,7 +1124,7 @@ const generarCertificadoParticipacion = async (req, res) => {
 
     res.setHeader(
       "Content-Disposition",
-      `attachment; filename="certificado-participacion-${participacion.id_participacion}.pdf"`,
+      `attachment; filename="certificado-${esGanador ? "reconocimiento" : "participacion"}-${participacion.id_participacion}.pdf"`,
     );
 
     res.send(pdf);

@@ -2,17 +2,44 @@ const PDFDocument = require("pdfkit");
 const fs = require("fs");
 const path = require("path");
 
+// Palabras de enlace que en un título van en minúscula (salvo al inicio)
+const PALABRAS_MENORES = new Set(["a", "al", "de", "del", "e", "el", "en", "la", "las", "los", "o", "u", "y"]);
+
 const capitalizarIniciales = (texto) => {
   if (!texto) return "";
 
-  return texto.toLowerCase().replace(/(?<!\p{L})\p{L}/gu, (letra) => letra.toUpperCase());
+  return texto
+    .toLowerCase()
+    .split(" ")
+    .map((palabra, i) =>
+      i > 0 && PALABRAS_MENORES.has(palabra)
+        ? palabra
+        : palabra.replace(/(?<!\p{L})\p{L}/gu, (letra) => letra.toUpperCase()),
+    )
+    .join(" ");
+};
+
+// "primer", "segundo"... para el texto del certificado de ganador
+const ORDINALES = ["primer", "segundo", "tercer", "cuarto", "quinto", "sexto", "séptimo", "octavo", "noveno", "décimo"];
+
+const puestoEnTexto = (puesto) => {
+  const numero = Number(puesto);
+  if (!Number.isInteger(numero) || numero < 1) return null;
+  return ORDINALES[numero - 1] || `${numero}.º`;
 };
 
 const generarCertificado = async ({
   nombreParticipante,
   nombreEdicion,
   nombreCategoria,
+  esGanador = false,
+  puesto = null,
 }) => {
+  // Si es ganador se genera el certificado de reconocimiento con su puesto;
+  // si no, el de participación
+  const ordinal = esGanador ? puestoEnTexto(puesto) : null;
+  const ganador = Boolean(esGanador);
+
   return new Promise((resolve, reject) => {
     try {
       const doc = new PDFDocument({
@@ -188,7 +215,7 @@ const generarCertificado = async ({
         .font("Times-Bold")
         .fontSize(31)
         .fillColor(rojo)
-        .text("PARTICIPACIÓN", 0, 178, {
+        .text(ganador ? "RECONOCIMIENTO" : "PARTICIPACIÓN", 0, 178, {
           width: W,
           align: "center",
           characterSpacing: 1,
@@ -256,11 +283,44 @@ const generarCertificado = async ({
         `como reconocimiento a su interés, compromiso ` +
         `y participación en esta iniciativa institucional.`;
 
+      const textoGanador =
+        `obtuvo ${ordinal ? `el ${ordinal} puesto` : "el reconocimiento como ganador(a)"} ` +
+        `en la categoría ${categoriaFormateada} de la ${edicionFormateada} ` +
+        `del Premio Anual al Mérito Científico y Empresarial (PAMCE), ` +
+        `en reconocimiento a la excelencia de su trabajo y a su aporte ` +
+        `al desarrollo científico y empresarial.`;
+
+      let inicioTexto = 330;
+
+      if (ganador) {
+        // Insignia dorada con el puesto, debajo del nombre
+        const textoInsignia = ordinal
+          ? `${ordinal.toUpperCase()} PUESTO`
+          : "GANADOR(A)";
+        const anchoInsignia = 170;
+
+        doc
+          .roundedRect(centroX - anchoInsignia / 2, 320, anchoInsignia, 22, 11)
+          .fill(dorado);
+
+        doc
+          .font("Helvetica-Bold")
+          .fontSize(10)
+          .fillColor(blanco)
+          .text(textoInsignia, centroX - anchoInsignia / 2, 326, {
+            width: anchoInsignia,
+            align: "center",
+            characterSpacing: 1.5,
+          });
+
+        inicioTexto = 352;
+      }
+
       doc
         .font("Helvetica")
         .fontSize(12)
         .fillColor(negro)
-        .text(textoParticipacion, 145, 330, {
+        .text(ganador ? textoGanador : textoParticipacion, 145, inicioTexto, {
           width: W - 290,
           align: "center",
           lineGap: 4,
