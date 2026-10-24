@@ -33,7 +33,7 @@ router.post(
   verificarRol("director"),
   enviarCorreosConvocatoria,
 );
-router.post("/logout", verificarToken, logout);
+router.post("/logout", logout);
 router.post("/crear-contrasena", crearContrasena);
 router.post("/reenviar-token-crear-contrasena", reenviarTokenCrearContrasena);
 

@@ -596,6 +596,17 @@ const refreshAccessToken = async (req, res) => {
         });
       }
 
+      // Si la sesión se cerró (logout), el refresh token ya no es válido
+      const sesionActiva = await Sesion.findOne({
+        where: { id_usuario: usuario.id_usuario },
+      });
+
+      if (!sesionActiva) {
+        return res.status(401).json({
+          message: "La sesión fue cerrada. Inicia sesión nuevamente.",
+        });
+      }
+
       const rolActivo = usuario.roles.find(
         (rol) => rol.id_rol === Number(id_rol),
       );
@@ -658,8 +669,27 @@ const refreshAccessToken = async (req, res) => {
   });
 };
 
-const logout = (req, res) => {
+// No exige un token vigente: aunque la sesión ya haya expirado, el usuario
+// debe poder salir. Si el token permite identificarlo, se elimina su sesión
+// en la base, y con ella deja de servir el refresh token.
+const logout = async (req, res) => {
   try {
+    const accessToken = req.cookies.accessToken;
+
+    if (accessToken) {
+      try {
+        const decoded = jwt.verify(accessToken, process.env.JWT_SECRET, {
+          ignoreExpiration: true,
+        });
+
+        await Sesion.destroy({
+          where: { id_usuario: decoded.data.id_usuario, token: accessToken },
+        });
+      } catch (error) {
+        // Token con firma inválida: solo se borran las cookies
+      }
+    }
+
     res.clearCookie("accessToken", {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
