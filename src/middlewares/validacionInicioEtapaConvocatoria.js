@@ -282,7 +282,7 @@ function validacionInicioEtapaConvocatoria() {
                     ">
                       ${c.nombre
                         .toLowerCase()
-                        .replace(/\b\w/g, (letra) => letra.toUpperCase())}
+                        .replace(/(?<!\p{L})\p{L}/gu, (letra) => letra.toUpperCase())}
                     </strong>
 
                   </div>
@@ -517,7 +517,7 @@ function validacionInicioEtapaConvocatoria() {
                               ">
                                 ${c.nombre
                                   .toLowerCase()
-                                  .replace(/\b\w/g, (l) => l.toUpperCase())}
+                                  .replace(/(?<!\p{L})\p{L}/gu, (l) => l.toUpperCase())}
                               </strong>
 
                               <div style="

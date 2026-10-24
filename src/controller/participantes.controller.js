@@ -1084,8 +1084,17 @@ const generarCertificadoParticipacion = async (req, res) => {
       });
     }
 
-    const nombreParticipante =
-      `${participacion.usuario?.primer_nombre || ""} ${participacion.usuario?.segundo_nombre || ""} ${participacion.usuario?.primer_apellido || ""} ${participacion.usuario?.segundo_apellido || ""}`.trim();
+    // Se omiten las partes vacías (p. ej. sin segundo nombre) para no dejar
+    // dobles espacios en el certificado
+    const nombreParticipante = [
+      participacion.usuario?.primer_nombre,
+      participacion.usuario?.segundo_nombre,
+      participacion.usuario?.primer_apellido,
+      participacion.usuario?.segundo_apellido,
+    ]
+      .map((parte) => String(parte ?? "").trim())
+      .filter(Boolean)
+      .join(" ");
 
     const nombreEdicion =
       participacion.edicionCategoria?.edicion?.nombre_edicion;

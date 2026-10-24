@@ -5,7 +5,7 @@ const path = require("path");
 const capitalizarIniciales = (texto) => {
   if (!texto) return "";
 
-  return texto.toLowerCase().replace(/\b\w/g, (letra) => letra.toUpperCase());
+  return texto.toLowerCase().replace(/(?<!\p{L})\p{L}/gu, (letra) => letra.toUpperCase());
 };
 
 const generarCertificado = async ({

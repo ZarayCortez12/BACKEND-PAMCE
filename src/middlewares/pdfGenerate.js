@@ -1767,7 +1767,7 @@ const formatearTexto = (texto) => {
   return texto
     .replaceAll(".", " ")
     .replaceAll("_", " ")
-    .replace(/\b\w/g, (l) => l.toUpperCase());
+    .replace(/(?<!\p{L})\p{L}/gu, (l) => l.toUpperCase());
 };
 
 module.exports = {

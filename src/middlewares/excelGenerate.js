@@ -2,8 +2,13 @@ const ExcelJS = require("exceljs");
 const path = require("path");
 const dayjs = require("dayjs");
 
+// Devuelve "" si no hay valor: varios campos son opcionales (por ejemplo,
+// jurados y administradores no tienen nivel educativo) y antes el Excel
+// fallaba con error 500
 const capitalize = (text) => {
-  return text.charAt(0).toUpperCase() + text.slice(1);
+  if (text === null || text === undefined || text === "") return "";
+  const valor = String(text);
+  return valor.charAt(0).toUpperCase() + valor.slice(1);
 };
 
 const configuracionesReportes = {
@@ -157,7 +162,7 @@ const configuracionesReportes = {
       registros.map((p) => ({
         correo_electronico: `${p.correo_electronico}`,
 
-        edicion: capitalize(p.edicion.nombre_edicion) || "Sin edición",
+        edicion: capitalize(p.edicion?.nombre_edicion) || "Sin edición",
 
         fecha_envio:
           p.fecha_envio && dayjs(p.fecha_envio).isValid()
@@ -532,7 +537,7 @@ const formatearTexto = (texto) => {
   return texto
     .replaceAll(".", " ")
     .replaceAll("_", " ")
-    .replace(/\b\w/g, (l) => l.toUpperCase());
+    .replace(/(?<!\p{L})\p{L}/gu, (l) => l.toUpperCase());
 };
 
 const bordeGeneral = () => ({

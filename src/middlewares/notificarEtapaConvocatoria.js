@@ -290,7 +290,7 @@ function notificarEtapaConvocatoria() {
                     ">
                       ${c.nombre
                         .toLowerCase()
-                        .replace(/\b\w/g, (letra) => letra.toUpperCase())}
+                        .replace(/(?<!\p{L})\p{L}/gu, (letra) => letra.toUpperCase())}
                     </strong>
 
                   </div>
