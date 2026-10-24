@@ -35,7 +35,7 @@ const login = async (req, res) => {
   try {
     const { numero_documento, clave } = req.body;
 
-    const usuario = await Usuario.findOne({
+    const usuario = await Usuario.scope("conContrasena").findOne({
       where: { numero_documento },
       include: [
         {

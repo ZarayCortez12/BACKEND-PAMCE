@@ -74,6 +74,16 @@ const Usuario = sequelize.define(
   {
     tableName: "usuarios",
     timestamps: false,
+    // El hash de la contraseña nunca se devuelve en las consultas;
+    // solo el login lo pide explícitamente con el scope "conContrasena"
+    defaultScope: {
+      attributes: { exclude: ["contrasena"] },
+    },
+    scopes: {
+      conContrasena: {
+        attributes: { include: ["contrasena"] },
+      },
+    },
   },
 );
 
