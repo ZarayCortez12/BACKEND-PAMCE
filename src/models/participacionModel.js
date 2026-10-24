@@ -76,6 +76,11 @@ const Participacion = sequelize.define(
       allowNull: true,
     },
 
+    es_ganador: {
+      type: DataTypes.BOOLEAN,
+      allowNull: true,
+    },
+
     puesto: {
       type: DataTypes.INTEGER,
       allowNull: true,
