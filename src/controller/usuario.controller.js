@@ -15,7 +15,15 @@ const { Op, where } = require("sequelize");
 const editarInformacionContacto = async (req, res) => {
   try {
     const { correo, telefono, direccion } = req.body;
-    const { id_usuario } = req.params;
+
+    // Cada usuario solo puede editar su propia información de contacto
+    const id_usuario = req.user.data.id_usuario;
+
+    if (Number(req.params.id_usuario) !== id_usuario) {
+      return res.status(403).json({
+        message: "No puedes modificar la información de otro usuario",
+      });
+    }
 
     const usuario = await Usuario.findOne({
       where: { id_usuario: id_usuario },
@@ -70,9 +78,10 @@ const editarInformacionContacto = async (req, res) => {
       }
     }
 
-    usuario.correo_electronico = correo;
-    usuario.telefono = telefono;
-    usuario.direccion = direccion;
+    // Solo se actualizan los campos enviados, para no borrar los demás
+    if (correo !== undefined) usuario.correo_electronico = correo;
+    if (telefono !== undefined) usuario.telefono = telefono;
+    if (direccion !== undefined) usuario.direccion = direccion;
     usuario.fecha_actualizacion = new Date();
 
     await usuario.save();
@@ -86,8 +95,16 @@ const editarInformacionContacto = async (req, res) => {
 
 const cambiarRolActivo = async (req, res) => {
   try {
-    const { id_usuario } = req.params;
     const { nuevoRol } = req.body;
+
+    // El cambio de rol solo aplica al usuario de la sesión actual
+    const id_usuario = req.user.data.id_usuario;
+
+    if (Number(req.params.id_usuario) !== id_usuario) {
+      return res.status(403).json({
+        message: "No puedes cambiar el rol de otro usuario",
+      });
+    }
 
     const usuario = await Usuario.findOne({
       where: { id_usuario: id_usuario },
