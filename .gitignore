@@ -21,3 +21,6 @@ documentos/
 .DS_Store
 Thumbs.db
 *.log
+
+# Scripts de esquema (sí se versionan)
+!database/*.sql
