@@ -1064,6 +1064,13 @@ const generarCertificadoParticipacion = async (req, res) => {
       });
     }
 
+    // Cada participante solo puede descargar el certificado de su propia participación
+    if (participacion.id_usuario !== req.user.data.id_usuario) {
+      return res.status(403).json({
+        message: "No tienes permiso para descargar este certificado.",
+      });
+    }
+
     if (participacion.estado !== "evaluada") {
       return res.status(400).json({
         message:
