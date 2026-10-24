@@ -4,8 +4,9 @@ const dayjs = require("dayjs");
 
 const listarNotificacionesSinLeer = async (req, res) => {
   try {
-    const { id_usuario } = req.params;
-    const { id_rol } = req.query;
+    // Solo las notificaciones del usuario y del rol activo de la sesión
+    const id_usuario = req.user.data.id_usuario;
+    const id_rol = req.user.data.rol_activo.id_rol;
 
     const notificaciones = await Notificacion.findAll({
       where: {
@@ -27,26 +28,18 @@ const listarNotificacionesSinLeer = async (req, res) => {
 
 const listarNotificaciones = async (req, res) => {
   try {
-    const { id_usuario } = req.params;
-    const {
-      rol,
-      prioridad,
-      leida,
-      fecha_inicio,
-      fecha_fin,
-      page = 1,
-      limit = 10,
-    } = req.query;
+    // Solo las notificaciones del usuario y del rol activo de la sesión
+    const id_usuario = req.user.data.id_usuario;
+    const rol = req.user.data.rol_activo.id_rol;
+    const { prioridad, leida, fecha_inicio, fecha_fin } = req.query;
 
+    const page = Math.max(parseInt(req.query.page) || 1, 1);
+    const limit = Math.min(Math.max(parseInt(req.query.limit) || 10, 1), 100);
     const offset = (page - 1) * limit;
 
     const whereNotification = {
-      ...(rol && {
-        id_rol: rol,
-      }),
-      ...(id_usuario && {
-        id_usuario: id_usuario,
-      }),
+      id_rol: rol,
+      id_usuario: id_usuario,
       ...(prioridad &&
         prioridad !== "TODOS" && {
           prioridad,
@@ -77,8 +70,8 @@ const listarNotificaciones = async (req, res) => {
     const { count, rows } = await Notificacion.findAndCountAll({
       where: whereNotification,
       order: [["fecha_envio", "DESC"]],
-      limit: parseInt(limit),
-      offset: parseInt(offset),
+      limit,
+      offset,
       distinct: true,
     });
 
@@ -87,9 +80,9 @@ const listarNotificaciones = async (req, res) => {
       notificaciones: rows,
       pagination: {
         total: count,
-        page: parseInt(page),
+        page,
         totalPages: Math.ceil(count / limit),
-        limit: parseInt(limit),
+        limit,
       },
     });
   } catch (error) {
@@ -102,8 +95,9 @@ const marcarNotificacionLeida = async (req, res) => {
   try {
     const { id_notificacion } = req.params;
 
+    // Un usuario solo puede marcar como leídas sus propias notificaciones
     const notificacion = await Notificacion.findOne({
-      where: { id: id_notificacion },
+      where: { id: id_notificacion, id_usuario: req.user.data.id_usuario },
     });
 
     if (!notificacion) {
