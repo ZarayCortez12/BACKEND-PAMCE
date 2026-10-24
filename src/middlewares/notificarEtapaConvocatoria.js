@@ -142,6 +142,21 @@ function notificarEtapaConvocatoria() {
           if (rubricas.length === 0) {
             motivos.push("No tiene una rúbrica configurada");
           } else {
+            // Porcentajes configurados para ESTA categoría. El include de la
+            // consulta anterior no filtra por categoría y podía tomar los
+            // porcentajes de otra categoría que usa la misma rúbrica.
+            const configuracionCriterios =
+              await EdicionCategoriaRubricaCriterio.findAll({
+                where: { id_edicion_categoria: idEdicionCategoria },
+              });
+
+            const porcentajePorCriterio = new Map(
+              configuracionCriterios.map((c) => [
+                c.id_rubrica_criterio,
+                Number(c.porcentaje),
+              ]),
+            );
+
             const rubricaIncompleta = rubricas.some((r) => {
               const criterios = r.rubrica?.RubricaCriterios ?? [];
 
@@ -153,14 +168,12 @@ function notificarEtapaConvocatoria() {
                 return (
                   suma +
                   Number(
-                    criterio.edicionCategoriaRubricaCriterio?.[0]?.get(
-                      "porcen",
-                    ) ?? 0,
+                    porcentajePorCriterio.get(criterio.id_rubrica_criterio) ?? 0,
                   )
                 );
               }, 0);
 
-              return totalCriterios !== 100;
+              return Math.abs(totalCriterios - 100) > 0.01;
             });
 
             if (rubricaIncompleta) {
@@ -173,7 +186,7 @@ function notificarEtapaConvocatoria() {
               return suma + Number(rubrica.get("porcentaje") ?? 0);
             }, 0);
 
-            if (totalRubricas !== 100) {
+            if (Math.abs(totalRubricas - 100) > 0.01) {
               motivos.push(
                 `Los porcentajes de las rúbricas de la categoría deben sumar 100% (actualmente suman ${totalRubricas}%)`,
               );
