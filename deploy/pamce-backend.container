@@ -1,0 +1,21 @@
+# Quadlet: arranca el backend con systemd, sin root.
+# Copiar a ~/.config/containers/systemd/ y ver el README (sección Podman).
+[Unit]
+Description=Backend de PAMCE
+After=network-online.target
+Wants=network-online.target
+
+[Container]
+Image=localhost/pamce-backend:latest
+ContainerName=pamce-backend
+EnvironmentFile=%h/pamce/.env
+Environment=FIREBASE_CREDENTIALS_PATH=/secrets/firebase.json
+PublishPort=4000:4000
+Volume=pamce_documentos:/app/src/documentos
+Volume=%h/pamce/secrets/serviceAccountKey.json:/secrets/firebase.json:ro,Z
+
+[Service]
+Restart=always
+
+[Install]
+WantedBy=default.target

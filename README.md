@@ -90,15 +90,54 @@ nota final = Σ (peso de la rúbrica × peso del criterio × promedio del criter
 
 En cada categoría ganan los N primeros (N = número de ganadores de la categoría). En caso de empate, gana la postulación más antigua.
 
-## Docker
+## Podman
+
+El despliegue usa [Podman](https://podman.io/) (funciona sin root). La imagen se define en `Containerfile`.
+
+### Con compose (PostgreSQL + backend)
+
+1. Copia `.env.example` como `.env`, complétalo y usa `DB_HOST=db`.
+2. Coloca la clave de Firebase en `secrets/serviceAccountKey.json` (el `.gitignore` ya la excluye). Sin root dentro del contenedor, el archivo debe poder leerlo cualquier usuario: `chmod 644 secrets/serviceAccountKey.json`.
+3. Levanta todo:
+
+   ```bash
+   podman compose up -d --build
+   podman compose logs -f backend
+   ```
+
+4. La base nace vacía. Restaura el respaldo y el script del histórico (reemplaza `<DB_USER>` y `<DB_NAME>` por los del `.env`):
+
+   ```bash
+   podman compose exec -T db pg_restore -U <DB_USER> -d <DB_NAME> --no-owner --no-privileges < ruta/BD_PAMCE_UFPS.backup
+   podman compose exec -T db psql -U <DB_USER> -d <DB_NAME> < database/historico_ediciones.sql
+   ```
+
+Si la universidad ya ofrece un PostgreSQL, borra el servicio `db` de `compose.yaml` y apunta `DB_HOST` a ese servidor.
+
+En un servidor con SELinux (RHEL, Rocky, Fedora) agrega `,Z` al montaje de la clave de Firebase en `compose.yaml`.
+
+### Sin compose
 
 ```bash
-docker build -t pamce-backend .
-docker run -p 4000:4000 --env-file .env \
+podman build -t pamce-backend -f Containerfile .
+podman run -d --name pamce-backend -p 4000:4000 --env-file .env \
   -v pamce_documentos:/app/src/documentos \
-  -v /ruta/serviceAccountKey.json:/secrets/firebase.json:ro \
+  -v ./secrets/serviceAccountKey.json:/secrets/firebase.json:ro,Z \
   -e FIREBASE_CREDENTIALS_PATH=/secrets/firebase.json \
-  pamce-backend
+  localhost/pamce-backend
+```
+
+### Arranque automático en el servidor (systemd)
+
+`deploy/pamce-backend.container` es una unidad Quadlet. Con la imagen ya construida y la base disponible:
+
+```bash
+mkdir -p ~/pamce/secrets ~/.config/containers/systemd
+cp .env ~/pamce/.env && cp secrets/serviceAccountKey.json ~/pamce/secrets/
+cp deploy/pamce-backend.container ~/.config/containers/systemd/
+systemctl --user daemon-reload
+systemctl --user start pamce-backend
+loginctl enable-linger $USER    # sigue corriendo al cerrar la sesión
 ```
 
 ## Estructura

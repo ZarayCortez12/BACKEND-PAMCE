@@ -1,0 +1,38 @@
+# Se ejecuta con: podman compose up -d --build   (o podman-compose up -d --build)
+# Lee las variables de .env (copia .env.example como .env y complétalo).
+services:
+  # PostgreSQL propio de PAMCE. Si la universidad ya ofrece una base de datos,
+  # borra este servicio y el depends_on del backend, y apunta DB_HOST del .env
+  # a ese servidor.
+  db:
+    image: docker.io/library/postgres:17
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASS}
+    volumes:
+      - pamce_pgdata:/var/lib/postgresql/data
+
+  backend:
+    build:
+      context: .
+      dockerfile: Containerfile
+    image: localhost/pamce-backend:latest
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      # La clave de Firebase se monta como archivo de solo lectura
+      FIREBASE_CREDENTIALS_PATH: /secrets/firebase.json
+    ports:
+      - "4000:4000"
+    volumes:
+      - pamce_documentos:/app/src/documentos
+      # En un servidor con SELinux (RHEL, Rocky, Fedora) agrega ,Z al final
+      - ./secrets/serviceAccountKey.json:/secrets/firebase.json:ro
+    depends_on:
+      - db
+
+volumes:
+  pamce_pgdata:
+  pamce_documentos:
