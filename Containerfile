@@ -1,4 +1,7 @@
-FROM node:20-bookworm-slim
+# Imagen del backend de PAMCE para Podman (también la lee Buildah y Docker).
+# El nombre completo de la imagen evita que Podman pregunte de qué registro
+# descargarla.
+FROM docker.io/library/node:20-bookworm-slim
 
 ENV NODE_ENV=production
 
@@ -9,7 +12,7 @@ COPY package*.json ./
 # Solo dependencias de producción (nodemon, eslint, etc. no van en la imagen)
 RUN npm ci --omit=dev
 
-COPY src ./src
+COPY --chown=node:node src ./src
 
 # Los documentos subidos por los participantes viven en un volumen, no en la
 # imagen: así no se pierden al recrear el contenedor ni se copian al construirla
@@ -19,6 +22,8 @@ VOLUME ["/app/src/documentos"]
 # La clave de Firebase se monta al ejecutar y se indica con
 # FIREBASE_CREDENTIALS_PATH (ver .env.example)
 
+# Sin root dentro del contenedor. Con Podman sin privilegios (rootless) este
+# usuario queda mapeado a un usuario normal del servidor.
 USER node
 
 EXPOSE 4000
