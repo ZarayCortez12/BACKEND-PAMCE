@@ -94,34 +94,40 @@ En cada categoría ganan los N primeros (N = número de ganadores de la categor�
 
 El despliegue usa [Podman](https://podman.io/) (funciona sin root). La imagen se define en `Containerfile`.
 
-### Con compose (PostgreSQL + backend)
+### Con compose (backend)
 
-1. Copia `.env.example` como `.env`, complétalo y usa `DB_HOST=db`.
+La base de datos no corre en un contenedor: se usa el PostgreSQL de la universidad.
+
+1. Copia `.env.example` como `.env` y complétalo. `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER` y `DB_PASS` son los del PostgreSQL de la universidad. Si ese PostgreSQL está en el mismo equipo que Podman, usa `DB_HOST=host.containers.internal`.
 2. Coloca la clave de Firebase en `secrets/serviceAccountKey.json` (el `.gitignore` ya la excluye). Sin root dentro del contenedor, el archivo debe poder leerlo cualquier usuario: `chmod 644 secrets/serviceAccountKey.json`.
-3. Levanta todo:
+3. Crea la carpeta de documentos, que queda en el servidor y persiste aunque se baje el contenedor:
+
+   ```bash
+   mkdir -p documentos
+   ```
+
+4. Levanta el backend:
 
    ```bash
    podman compose up -d --build
    podman compose logs -f backend
    ```
 
-4. La base nace vacía. Restaura el respaldo y el script del histórico (reemplaza `<DB_USER>` y `<DB_NAME>` por los del `.env`):
+5. Restaura el respaldo y el script del histórico en el PostgreSQL de la universidad (reemplaza los valores por los del `.env`):
 
    ```bash
-   podman compose exec -T db pg_restore -U <DB_USER> -d <DB_NAME> --no-owner --no-privileges < ruta/BD_PAMCE_UFPS.backup
-   podman compose exec -T db psql -U <DB_USER> -d <DB_NAME> < database/historico_ediciones.sql
+   pg_restore -h <DB_HOST> -p <DB_PORT> -U <DB_USER> -d <DB_NAME> --no-owner --no-privileges ruta/BD_PAMCE_UFPS.backup
+   psql -h <DB_HOST> -p <DB_PORT> -U <DB_USER> -d <DB_NAME> -f database/historico_ediciones.sql
    ```
 
-Si la universidad ya ofrece un PostgreSQL, borra el servicio `db` de `compose.yaml` y apunta `DB_HOST` a ese servidor.
-
-En un servidor con SELinux (RHEL, Rocky, Fedora) agrega `,Z` al montaje de la clave de Firebase en `compose.yaml`.
+En el `compose.yaml`, `./documentos` se puede cambiar por una ruta absoluta del servidor (por ejemplo `/var/pamce/documentos`). Si al subir archivos aparece un error de permisos, agrega `:U` al montaje. En un servidor con SELinux (RHEL, Rocky, Fedora) agrega `,Z` al montaje de la clave de Firebase.
 
 ### Sin compose
 
 ```bash
 podman build -t pamce-backend -f Containerfile .
 podman run -d --name pamce-backend -p 4000:4000 --env-file .env \
-  -v pamce_documentos:/app/src/documentos \
+  -v ./documentos:/app/src/documentos \
   -v ./secrets/serviceAccountKey.json:/secrets/firebase.json:ro,Z \
   -e FIREBASE_CREDENTIALS_PATH=/secrets/firebase.json \
   localhost/pamce-backend
@@ -129,10 +135,10 @@ podman run -d --name pamce-backend -p 4000:4000 --env-file .env \
 
 ### Arranque automático en el servidor (systemd)
 
-`deploy/pamce-backend.container` es una unidad Quadlet. Con la imagen ya construida y la base disponible:
+`deploy/pamce-backend.container` es una unidad Quadlet. Con la imagen ya construida y la base disponible (crea también la carpeta `~/pamce/documentos`):
 
 ```bash
-mkdir -p ~/pamce/secrets ~/.config/containers/systemd
+mkdir -p ~/pamce/secrets ~/pamce/documentos ~/.config/containers/systemd
 cp .env ~/pamce/.env && cp secrets/serviceAccountKey.json ~/pamce/secrets/
 cp deploy/pamce-backend.container ~/.config/containers/systemd/
 systemctl --user daemon-reload

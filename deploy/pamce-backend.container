@@ -11,7 +11,7 @@ ContainerName=pamce-backend
 EnvironmentFile=%h/pamce/.env
 Environment=FIREBASE_CREDENTIALS_PATH=/secrets/firebase.json
 PublishPort=4000:4000
-Volume=pamce_documentos:/app/src/documentos
+Volume=%h/pamce/documentos:/app/src/documentos:Z
 Volume=%h/pamce/secrets/serviceAccountKey.json:/secrets/firebase.json:ro,Z
 
 [Service]
