@@ -586,7 +586,10 @@ const registrarParticipacionPublico = async (req, res) => {
 
   // La edición del formulario debe ser la misma que validó validarAccesoConvocatoria
   if (Number(id_edicion) !== Number(req.query.id_edicion)) {
-    return rechazar(400, "La edición del formulario no coincide con la convocatoria.");
+    return rechazar(
+      400,
+      "La edición del formulario no coincide con la convocatoria.",
+    );
   }
 
   const usuarioPostulado = await Usuario.findByPk(id_usuario);
@@ -603,7 +606,10 @@ const registrarParticipacionPublico = async (req, res) => {
   });
 
   if (!categoriaDeLaEdicion) {
-    return rechazar(400, "La categoría seleccionada no está disponible en esta edición.");
+    return rechazar(
+      400,
+      "La categoría seleccionada no está disponible en esta edición.",
+    );
   }
 
   const transaction = await sequelize.transaction();

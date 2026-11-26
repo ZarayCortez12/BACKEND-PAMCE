@@ -27,9 +27,6 @@ const sequelize = require("../configs/db");
 const { de } = require("zod/v4/locales");
 const { setAuditContext } = require("../utils/audits");
 
-// Credenciales de la cuenta de servicio de Firebase. En producción (contenedor)
-// se monta el archivo y se indica con FIREBASE_CREDENTIALS_PATH, para que la
-// clave privada no quede dentro del código ni de la imagen.
 const rutaCredencialesFirebase = process.env.FIREBASE_CREDENTIALS_PATH
   ? require("path").resolve(process.env.FIREBASE_CREDENTIALS_PATH)
   : require("path").join(__dirname, "..", "utils", "serviceAccountKey.json");
@@ -179,7 +176,6 @@ const login = async (req, res) => {
       expiresIn,
     });
   } catch (error) {
-    console.log(error);
     res
       .status(500)
       .json({ error: "Error en el inicio de sesión. Intenta más tarde" });
@@ -193,9 +189,6 @@ const loginGoogle = async (req, res) => {
 
     const decodedToken = await admin.auth().verifyIdToken(token);
 
-    // Solo se acepta un correo verificado por Google: si el proyecto de
-    // Firebase permite otros métodos, alguien podría registrar el correo
-    // de otra persona sin verificarlo y entrar con su cuenta
     if (
       !decodedToken.email_verified ||
       decodedToken.firebase?.sign_in_provider !== "google.com"
@@ -369,8 +362,6 @@ const sendCodigo = async (req, res) => {
 const validarCodigoOTP = async (req, res) => {
   const { correo_electronico, codigo } = req.body;
 
-  // Se valida antes de abrir la transacción: el return temprano la dejaba
-  // abierta y con varias peticiones se agotaban las conexiones a la base
   if (!correo_electronico || !codigo) {
     return res.status(400).json({
       message: "Correo y código son requeridos",
@@ -380,7 +371,6 @@ const validarCodigoOTP = async (req, res) => {
   const t = await sequelize.transaction();
 
   try {
-
     const ahora = new Date();
 
     const codigoOTP = await CodigoRecuperacion.findOne({
@@ -569,7 +559,6 @@ const obtenerUsuarioActual = async (req, res) => {
       expiresIn: decoded.exp * 1000,
     });
   } catch (error) {
-    console.log(error);
     return res.status(500).json({ message: "Error del servidor" });
   }
 };
@@ -618,7 +607,6 @@ const refreshAccessToken = async (req, res) => {
         });
       }
 
-      // Si la sesión se cerró (logout), el refresh token ya no es válido
       const sesionActiva = await Sesion.findOne({
         where: { id_usuario: usuario.id_usuario },
       });
@@ -691,9 +679,6 @@ const refreshAccessToken = async (req, res) => {
   });
 };
 
-// No exige un token vigente: aunque la sesión ya haya expirado, el usuario
-// debe poder salir. Si el token permite identificarlo, se elimina su sesión
-// en la base, y con ella deja de servir el refresh token.
 const logout = async (req, res) => {
   try {
     const accessToken = req.cookies.accessToken;
